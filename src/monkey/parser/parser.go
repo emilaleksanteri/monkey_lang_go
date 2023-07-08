@@ -26,15 +26,28 @@ type (
 	infixParseFn  func(ast.Expression) ast.Expression
 )
 
+var precedences = map[token.TokenType]int{
+	token.EQ:       EQUALS,
+	token.NOT_EQ:   EQUALS,
+	token.LT:       LESSGREATER,
+	token.GT:       LESSGREATER,
+	token.PLUS:     SUM,
+	token.MINUS:    SUM,
+	token.SLASH:    PRODUCT,
+	token.ASTERISK: PRODUCT,
+}
+
+// measure precedence of an exrpession -> * should have higher precendence than + or -
+// ,higher the num 0 -> 7, stronger the precedence
 const (
-	_ int = iota
-	LOWEST
-	EQUALS      // ==
-	LESSGREATER // > or <
-	SUM         // +
-	PRODUCT     // *
-	PREFIX      // -X or !X
-	CALL        // foo(x)
+	_           int = iota
+	LOWEST          // wear precedence
+	EQUALS          // ==
+	LESSGREATER     // > or <
+	SUM             // + or -
+	PRODUCT         // * or /
+	PREFIX          // -X or !X
+	CALL            // foo(x)
 )
 
 func New(l *lexer.Lexer) *Parser {
@@ -50,10 +63,55 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerPrefix(token.BANG, p.parsePrefixExpression)
 	p.registerPrefix(token.MINUS, p.parsePrefixExpression)
 
+	p.infixParseFns = make(map[token.TokenType]infixParseFn)
+	p.registerInfix(token.PLUS, p.parseInfixExpression)
+	p.registerInfix(token.MINUS, p.parseInfixExpression)
+	p.registerInfix(token.SLASH, p.parseInfixExpression)
+	p.registerInfix(token.ASTERISK, p.parseInfixExpression)
+	p.registerInfix(token.EQ, p.parseInfixExpression)
+	p.registerInfix(token.NOT_EQ, p.parseInfixExpression)
+	p.registerInfix(token.LT, p.parseInfixExpression)
+	p.registerInfix(token.GT, p.parseInfixExpression)
+
 	// move 2 to get curr and peak
 	p.nextToken() // curr 0, next 1, we don't want 0
 	p.nextToken() // curr 1, next 2
 	return p
+}
+
+func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
+	// in middle of an expression
+	expression := &ast.InfixExpression{
+		Token:    p.curToken,
+		Operator: p.curToken.Literal,
+		Left:     left,
+	}
+	// how strong are we
+	precedence := p.curPrecedence()
+	p.nextToken()
+
+	// do we have an associated prefix or infix, and are they higher than us in precedence
+	expression.Right = p.parseExpression(precedence)
+
+	return expression
+}
+
+// is something going to have higher precedence than me?
+func (p *Parser) peekPrecedence() int {
+	if p, ok := precedences[p.peekToken.Type]; ok {
+		return p
+	}
+
+	return LOWEST
+}
+
+// what is my current precedence?
+func (p *Parser) curPrecedence() int {
+	if p, ok := precedences[p.curToken.Type]; ok {
+		return p
+	}
+
+	return LOWEST
 }
 
 func (p *Parser) parsePrefixExpression() ast.Expression {
@@ -118,6 +176,7 @@ func (p *Parser) noPrefixParseFnError(t token.TokenType) {
 }
 
 func (p *Parser) parseExpression(precedence int) ast.Expression {
+	// associated prefix of current
 	prefix := p.prefixParseFns[p.curToken.Type]
 	if prefix == nil {
 		p.noPrefixParseFnError(p.curToken.Type)
@@ -125,6 +184,19 @@ func (p *Parser) parseExpression(precedence int) ast.Expression {
 	}
 
 	leftExp := prefix()
+
+	for !p.peekTokenIs(token.SEMICOLON) && precedence < p.peekPrecedence() {
+		// associated infix of next
+		infix := p.infixParseFns[p.peekToken.Type]
+
+		// no next infix
+		if infix == nil {
+			return leftExp
+		}
+
+		p.nextToken()
+		leftExp = infix(leftExp)
+	}
 
 	return leftExp
 }

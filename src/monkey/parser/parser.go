@@ -73,10 +73,27 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerInfix(token.LT, p.parseInfixExpression)
 	p.registerInfix(token.GT, p.parseInfixExpression)
 
+	p.registerPrefix(token.LPAREN, p.parseGroupedExpression)
+
+	p.registerPrefix(token.TRUE, p.parseBoolean)
+	p.registerPrefix(token.FALSE, p.parseBoolean)
+
 	// move 2 to get curr and peak
 	p.nextToken() // curr 0, next 1, we don't want 0
 	p.nextToken() // curr 1, next 2
 	return p
+}
+
+func (p *Parser) parseGroupedExpression() ast.Expression {
+	p.nextToken()
+
+	exp := p.parseExpression(LOWEST)
+
+	if !p.expectedPeek(token.RPAREN) {
+		return nil
+	}
+
+	return exp
 }
 
 func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
@@ -84,13 +101,13 @@ func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
 	expression := &ast.InfixExpression{
 		Token:    p.curToken,
 		Operator: p.curToken.Literal,
-		Left:     left,
+		Left:     left, // int literal from parseExpression
 	}
 	// how strong are we
 	precedence := p.curPrecedence()
 	p.nextToken()
 
-	// do we have an associated prefix or infix, and are they higher than us in precedence
+	//
 	expression.Right = p.parseExpression(precedence)
 
 	return expression
@@ -123,6 +140,10 @@ func (p *Parser) parsePrefixExpression() ast.Expression {
 	expression.Right = p.parseExpression(PREFIX)
 
 	return expression
+}
+
+func (p *Parser) parseBoolean() ast.Expression {
+	return &ast.Boolean{Token: p.curToken, Value: p.curTokenIs(token.TRUE)}
 }
 
 func (p *Parser) parseIdentifier() ast.Expression {
@@ -183,21 +204,24 @@ func (p *Parser) parseExpression(precedence int) ast.Expression {
 		return nil
 	}
 
+	// curr is left node expression like number 1
 	leftExp := prefix()
-
+	// not end of line and next has higher precedence
 	for !p.peekTokenIs(token.SEMICOLON) && precedence < p.peekPrecedence() {
 		// associated infix of next
 		infix := p.infixParseFns[p.peekToken.Type]
 
-		// no next infix
+		// no next infix, int is the left one
 		if infix == nil {
 			return leftExp
 		}
 
 		p.nextToken()
+
+		// if we are e.g., + we go after 1 -> 1 +,  becomes the left node and 1 below it + -> 1
 		leftExp = infix(leftExp)
 	}
-
+	// returns left node
 	return leftExp
 }
 

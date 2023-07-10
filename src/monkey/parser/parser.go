@@ -78,10 +78,64 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerPrefix(token.TRUE, p.parseBoolean)
 	p.registerPrefix(token.FALSE, p.parseBoolean)
 
+	p.registerPrefix(token.IF, p.parseIfExpression)
+
 	// move 2 to get curr and peak
 	p.nextToken() // curr 0, next 1, we don't want 0
 	p.nextToken() // curr 1, next 2
 	return p
+}
+
+func (p *Parser) parseIfExpression() ast.Expression {
+	expression := &ast.IfExpression{Token: p.curToken}
+
+	if !p.expectedPeek(token.LPAREN) {
+		return nil
+	}
+
+	p.nextToken()
+	expression.Condition = p.parseExpression(LOWEST)
+
+	// remember that after each peek we move to the next token in the exptectedPeek function
+	if !p.expectedPeek(token.RPAREN) {
+		return nil
+	}
+
+	if !p.expectedPeek(token.LBRACE) {
+		return nil
+	}
+
+	// moves parser to the end of the if block
+	expression.Consequence = p.parseBlockStatement()
+
+	// if else exists, we are there now
+	if p.peekTokenIs(token.ELSE) {
+		p.nextToken()
+
+		if !p.expectedPeek(token.LBRACE) {
+			return nil
+		}
+		// same logic as for if block
+		expression.Alternative = p.parseBlockStatement()
+	}
+
+	return expression
+}
+
+func (p *Parser) parseBlockStatement() *ast.BlockStatement {
+	block := &ast.BlockStatement{Token: p.curToken}
+	block.Statements = []ast.Statement{}
+
+	p.nextToken()
+	for !p.curTokenIs(token.RBRACE) && !p.curTokenIs(token.EOF) { // untill { x + y; } <- here or till input ends
+		stmt := p.parseStatement() // makes a statement node with the contents of each line e.g., x; or x + y;
+		if stmt != nil {
+			block.Statements = append(block.Statements, stmt)
+		}
+		p.nextToken()
+	}
+
+	return block
 }
 
 func (p *Parser) parseGroupedExpression() ast.Expression {

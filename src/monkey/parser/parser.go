@@ -80,10 +80,57 @@ func New(l *lexer.Lexer) *Parser {
 
 	p.registerPrefix(token.IF, p.parseIfExpression)
 
+	p.registerPrefix(token.FUNCTION, p.parseFunctionLiteral)
+
 	// move 2 to get curr and peak
 	p.nextToken() // curr 0, next 1, we don't want 0
 	p.nextToken() // curr 1, next 2
 	return p
+}
+
+func (p *Parser) parseFunctionLiteral() ast.Expression {
+	lit := &ast.FunctionLiteral{Token: p.curToken}
+
+	if !p.expectedPeek(token.LPAREN) {
+		return nil
+	}
+	// move from (x, y) <- to this RPAREN
+	lit.Parameters = p.parseFunctionParameters()
+	// next one should be {
+	if !p.expectedPeek(token.LBRACE) {
+		return nil
+	}
+	// inside of braces
+	lit.Body = p.parseBlockStatement()
+
+	return lit
+}
+
+func (p *Parser) parseFunctionParameters() []*ast.Identifier {
+	identifiers := []*ast.Identifier{}
+
+	if p.peekTokenIs(token.RPAREN) {
+		p.nextToken()
+		return identifiers
+	}
+
+	p.nextToken()
+
+	ident := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	identifiers = append(identifiers, ident)
+
+	for p.peekTokenIs(token.COMMA) {
+		p.nextToken()
+		p.nextToken()
+		ident := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+		identifiers = append(identifiers, ident)
+	}
+
+	if !p.expectedPeek(token.RPAREN) {
+		return nil
+	}
+
+	return identifiers
 }
 
 func (p *Parser) parseIfExpression() ast.Expression {

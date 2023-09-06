@@ -24,10 +24,12 @@ func TestNextToken(t *testing.T) {
 
 	10 == 10;
 	10 != 9;
+	"foobar"
+	"foo bar"
 	`
 
 	tests := []struct {
-		expectedType token.TokenType
+		expectedType    token.TokenType
 		expectedLiteral string
 	}{
 		{token.LET, "let"},
@@ -102,6 +104,8 @@ func TestNextToken(t *testing.T) {
 		{token.NOT_EQ, "!="},
 		{token.INT, "9"},
 		{token.SEMICOLON, ";"},
+		{token.STRING, "foobar"},
+		{token.STRING, "foo bar"},
 		{token.EOF, ""},
 	}
 
@@ -113,10 +117,10 @@ func TestNextToken(t *testing.T) {
 			t.Fatalf("tests[%d] - TokenType wrong. expected=%q, got=%q",
 				i, tt.expectedType, tok.Type)
 		}
-		
+
 		if tok.Literal != tt.expectedLiteral {
 			t.Fatalf("tests[%d] - literal wrong, expected=%q, got=%q",
-			i, tt.expectedLiteral, tok.Literal)
+				i, tt.expectedLiteral, tok.Literal)
 		}
 	}
 }

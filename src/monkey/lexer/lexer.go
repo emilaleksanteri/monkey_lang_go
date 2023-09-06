@@ -5,10 +5,10 @@ import (
 )
 
 type Lexer struct {
-	input		string
-	position	int	//current position char
-	readPosition	int  // currently reading,1 after position
-	ch		byte // char to read
+	input        string
+	position     int  //current position char
+	readPosition int  // currently reading,1 after position
+	ch           byte // char to read
 }
 
 func New(input string) *Lexer {
@@ -27,6 +27,7 @@ func (l *Lexer) readChar() {
 	l.position = l.readPosition
 	l.readPosition += 1
 }
+
 // get token, move forward
 func (l *Lexer) NextToken() token.Token {
 	var tok token.Token
@@ -36,8 +37,8 @@ func (l *Lexer) NextToken() token.Token {
 	switch l.ch {
 	case '=':
 		if l.peakChar() == '=' {
-			ch := l.ch // hold on to current
-			l.readChar() // point to next
+			ch := l.ch                           // hold on to current
+			l.readChar()                         // point to next
 			literal := string(ch) + string(l.ch) // combine ==
 			tok = token.Token{Type: token.EQ, Literal: literal}
 		} else {
@@ -76,6 +77,9 @@ func (l *Lexer) NextToken() token.Token {
 		tok = newToken(token.LT, l.ch)
 	case '>':
 		tok = newToken(token.GT, l.ch)
+	case '"':
+		tok.Type = token.STRING
+		tok.Literal = l.readString()
 	case 0:
 		tok.Literal = ""
 		tok.Type = token.EOF
@@ -96,6 +100,17 @@ func (l *Lexer) NextToken() token.Token {
 
 	l.readChar()
 	return tok
+}
+
+func (l *Lexer) readString() string {
+	position := l.position + 1
+	for {
+		l.readChar()
+		if l.ch == '"' || l.ch == 0 {
+			break
+		}
+	}
+	return l.input[position:l.position]
 }
 
 // whats next?
@@ -128,7 +143,7 @@ func (l *Lexer) readNumber() string {
 	for isDigit(l.ch) {
 		l.readChar()
 	}
-	
+
 	return l.input[position:l.position]
 }
 

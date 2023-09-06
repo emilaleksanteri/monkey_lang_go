@@ -258,6 +258,19 @@ func TestFunctionObject(t *testing.T) {
 	}
 }
 
+func TestStringLiteral(t *testing.T) {
+	input := `"Hello World!"`
+
+	evaluated := testEval(input)
+	str, ok := evaluated.(*object.String)
+	if !ok {
+		t.Fatalf("did not get a object.String, got=%T (%+v)", evaluated, evaluated)
+	}
+
+	if str.Value != "Hello World!" {
+		t.Fatalf("string has got the wrong value!, got=%q", str.Value)
+	}
+}
 
 func testNullObject(t *testing.T, obj object.Object) bool {
 	if obj != NULL {

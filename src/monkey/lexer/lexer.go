@@ -143,5 +143,5 @@ func newToken(tokenType token.TokenType, ch byte) token.Token {
 func isLetter(ch byte) bool {
 	// allow special chars here
 	// in byte nums 97 <= ch && ch <= 122 || 65 <= ch && ch <= 90 || ch == 95
-	return 'a' <= ch && ch <= 'z' || 'A' <= ch && 'Z' <= ch || ch == '_'
+	return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || ch == '_'
 }

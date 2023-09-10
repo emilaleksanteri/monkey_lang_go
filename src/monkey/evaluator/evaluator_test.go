@@ -324,6 +324,7 @@ func TestBuiltinFunctions(t *testing.T) {
 	}
 }
 
+
 func testNullObject(t *testing.T, obj object.Object) bool {
 	if obj != NULL {
 		t.Errorf("This object was not null brah got=%T (%+v)", obj, obj)

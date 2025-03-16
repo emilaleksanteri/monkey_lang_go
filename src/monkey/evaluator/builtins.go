@@ -103,4 +103,43 @@ var builtins = map[string]*object.Builtin{
 			return &object.Array{Elements: newElems}
 		},
 	},
+	"pop": &object.Builtin{
+		Fn: func(args ...object.Object) object.Object {
+			if len(args) != 2 {
+				return newError("wrong number of arguments. got=%d, want=2", len(args))
+			}
+
+			if args[0].Type() != object.ARRAY_OBJ {
+				return newError("argument 1 'pop' mut be ARRAY, got %s", args[0].Type())
+			}
+
+			if args[1].Type() != object.INTEGER_OBJ {
+				return newError("argument 2 'pop' mut be INTEGER, got %s", args[0].Type())
+			}
+
+			arr := args[0].(*object.Array)
+			idx := args[1].(*object.Integer)
+
+			length := len(arr.Elements)
+			if length > 0 && (int(idx.Value) < length && int(idx.Value) >= 0) {
+				newElems := []object.Object{}
+				for elemIdx, elem := range arr.Elements {
+					if elemIdx == int(idx.Value) {
+						continue
+					}
+
+					newElems = append(newElems, elem)
+				}
+
+				return &object.Array{Elements: newElems}
+			}
+
+			if int(idx.Value) >= length || int(idx.Value) < 0 {
+				return newError("index out of range")
+			}
+
+			return NULL
+
+		},
+	},
 }
